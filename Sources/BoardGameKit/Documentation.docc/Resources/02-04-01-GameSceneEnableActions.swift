@@ -1,0 +1,76 @@
+import BoardGameKit
+import BoardGameKitHost
+import SceneKit
+
+final class CrazyEightsGameScene: SCNNode, GameScene3D {
+    
+    var players = [CrazyEightsPlayerNode]()
+    var localPlayer: CrazyEightsPlayerNode?
+    var focusedPlayer: CrazyEightsPlayerNode?
+    var actionHandler: (any GameSceneActionHandler3D)?
+    private let table = CrazyEightsTableNode()
+    private var eventHandler: GameSceneEventHandler<CrazyEightsPlayerNode, CrazyEightsPlayerState>! = .init()
+    private let gameSceneContext = GameSceneContext.current
+    
+    func load(localizedPlayers: [LocalizedPlayer], options: CrazyEightsOptions) async throws {
+        players = localizedPlayers.map({ CrazyEightsPlayerNode(localizedPlayer: $0) })
+        positionPlayers(players, mainPosition: .init(x: 0, y: 0.2), otherPositions: .arc(minRadius: 0.2, distanceBetweenPoints: 0.2), hostPlayer: gameSceneContext.hostPlayer)
+        for player in players {
+            addChildNode(player)
+        }
+        addChildNode(table)
+        
+        eventHandler.register(startGame)
+        eventHandler.register(playCard)
+    }
+    
+    func handle(eventGroup: GameManager.EventGroupResponse) throws {
+        try eventHandler.handle(eventGroup: eventGroup)
+    }
+    
+    func handle(error: GameManager.GameErrorResponse) throws {
+        try eventHandler.handle(error: error)
+    }
+    
+    func close() {
+        eventHandler = nil
+    }
+    
+    func hidePrivateData(_ hide: Bool, for player: CrazyEightsPlayerNode) {
+        player.handCards.hideChildren = hide
+    }
+    
+    func enableActions(_ enable: Bool, for player: CrazyEightsPlayerNode) {
+        for state in eventHandler.state(for: player) {
+            switch state {
+            case .play:
+                player.handCards.isEnabled = enable
+                player.handCards.tap = selectCard
+            }
+        }
+    }
+    
+    // MARK: - Play
+    
+    private func startGame(data: CrazyEightsGame.StartGameEvent, privateData: CrazyEightsGame.StartGameEvent.PrivateDataList?) {
+        for (i, player) in players.enumerated() {
+            if let privateData = privateData?.get(for: player.id) {
+                player.handCards.appendNewNodes(table.cardDeck.lastChildNodes(withNames: privateData.cards))
+            } else {
+                player.handCards.appendNewNodes(table.cardDeck.lastChildNodes(hiddenCount: data.cardCount))
+            }
+            player.handCards.animateNodes(timeOffset: TimeInterval(i) / TimeInterval(players.count))
+        }
+    }
+    
+    private func selectCard(_ sender: Scene3D.HitTestResult) {
+        actionHandler?.sendAction(CrazyEightsGame.PlayCardAction(card: sender.descendants[0].name!))
+    }
+    
+    private func playCard(data: CrazyEightsGame.PlayCardEvent) {
+        let player = players.first(id: data.player)!
+        table.playedCards.appendNewNode(player.handCards.firstChildNode(withName: data.card))
+        table.playedCards.animateNodes()
+    }
+    
+}

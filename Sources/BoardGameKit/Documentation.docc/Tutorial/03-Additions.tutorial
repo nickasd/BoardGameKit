@@ -1,0 +1,292 @@
+@Tutorial(time: 45) {
+    @Intro(title: "Additions") {
+        In this chapter we're going to enrich the game by making it prettier and adding bots.
+        
+        @Image(source: "03-08-06-SampleGame.png", alt: "An updated menu with a sample game playing back in the background.")
+    }
+    
+    @Section(title: "Player Names and Overlays") {
+        @ContentAndMedia {
+            Player overlays allow to identify the other players during the game and show additional game-related information.
+            
+            @Image(source: "03-01-06-PlayerOverlays", alt: "The game scene with player overlays.")
+        }
+        
+        @Steps {
+            @Step {
+                Game characters allow to show an icon and custom name for each player: we define a `CrazyEightsCharacter` enum that implements the `GameCharacter` protocol. Feel free to define characters that are in theme with your game. By default, the type's `rawValue` is used as the player name.
+                
+                @Code(name: "CrazyEightsConfiguration.swift", file: "03-01-01-GameCharacters.swift", previousFile: "01-02-04-ConfigurationCredits.swift")
+            }
+            
+            @Step {
+                By default, the type's `rawValue` is used for the player icon file name as well (with a `.heic` extension). To effectively show the player icons, we would also need to provide the path to the containing folder; if you have some beautiful icons, feel free to try.
+                
+                @Code(name: "CrazyEightsConfiguration.swift", file: "03-01-02-PlayerIcons.swift")
+            }
+            
+            @Step {
+                To show the player icon and name during the game, we implement the `overlay` property in our player node (which has a default implementation that returns `nil`).
+                
+                @Code(name: "CrazyEightsPlayerNode.swift", file: "03-01-03-PlaverNodeOverlay.swift", previousFile: "02-01-08-PlayerNodeCards.swift")
+            }
+            
+            @Step {
+                We can also augment the overlay by adding a ticker that displays the player points.
+                
+                @Code(name: "CrazyEightsPlayerNode.swift", file: "03-01-04-PlaverNodePoints.swift")
+            }
+            
+            @Step {
+                When a round finishes, we update each player's points ticker with the new total number of points.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "03-01-05-GameScenePlayerPoints.swift", previousFile: "02-06-06-GameSceneEndGame.swift")
+            }
+            
+            @Step {
+                Here's how the game scene looks like with the player overlays.
+                
+                @Image(source: "03-01-06-PlayerOverlays", alt: "The game scene with player overlays.")
+            }
+        }
+    }
+    
+    @Section(title: "Active Player Spotlights") {
+        @ContentAndMedia {
+            Marking the active player with a spotlight makes it easier to follow the game and understand when it's your turn.
+            
+            @Image(source: "03-02-03-ActivePlayerSpotlight", alt: "The game scene with the player spotlight.")
+        }
+        
+        @Steps {
+            @Step {
+                Create an instance variable `activePlayerSpotlights` of type `ActivePlayerSpotlights3D`. The initializer takes the `players` array and a number of spotlights. In our case it's only one spotlight, since only one player can be active at any given time.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "03-02-01-ActivePlayerSpotlightsInit.swift", previousFile: "03-01-05-GameScenePlayerPoints.swift")
+            }
+            
+            @Step {
+                In `handle(eventGroup:)` we tell the spotlight to update with the current player states, which will automatically point it towards the active player.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "03-02-02-ActivePlayerSpotlightsUpdate.swift", previousFile: "03-02-01-ActivePlayerSpotlightsInit.swift")
+            }
+            
+            @Step {
+                Here's how the game scene looks like with the player spotlight.
+                
+                @Image(source: "03-02-03-ActivePlayerSpotlight", alt: "The game scene with the player spotlight.")
+            }
+        }
+    }
+    
+    @Section(title: "Suit / Rank Selection Dialog") {
+        @ContentAndMedia {
+            When someone plays an 8, they should be able to select which rank or suit the next player has to play. We'll make this possible by showing a temporary dialog.
+            
+            @Image(source: "03-03-09-ChooseRankSuitDialog", alt: "The choose rank or suit dialog.")
+        }
+        
+        @Steps {
+            @Step {
+                Let's add a new type `RankSuit` that we'll use to communicate the user's choice. We have to make `Suit` adopt the `Codable` protocol to be able to use it in `RankSuit` that is also `Codable`.
+                
+                @Code(name: "GameElements.swift", file: "03-03-01-RankSuit.swift", previousFile: "02-01-03-Card.swift")
+            }
+            @Step {
+                We also need a new player state.
+                
+                @Code(name: "CrazyEightsPlayer.swift", file: "03-03-02-PlayerStateChooseRankSuit.swift", previousFile: "02-06-01-PlayerPoints.swift")
+            }
+            
+            @Step {
+                Now we update the game logic. We add an instance variable `chosenRankSuit` to keep track of the chosen rank or suit, the new types `ChooseRankSuitAction` and `ChooseRankSuitEvent`, and the action handler `chooseRankSuit`.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "03-03-03-ChooseRankSuitAction.swift", previousFile: "02-06-04-EndGame.swift")
+            }
+            
+            @Step {
+                We need to reset `chosenRankSuit` after the next card is played. We also need to update `PlayCardEvent` and `validatePlayCard`.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "03-03-04-PlayCardUpdate.swift")
+            }
+            
+            @Step {
+                Now we create a 2D dialog that we'll present in the next step. For this game, the dialog doesn't really need to record its state, but in other games it might change depending on the current event, for example to show different buttons.
+                
+                @Code(name: "ChooseRankSuitDialog.swift", file: "03-03-05-ChooseRankSuitDialog.swift")
+            }
+            
+            @Step {
+                In the game scene, we set up the dialog's state in response to `PlayCardEvent`. For this game, the dialog always looks the same, but in other games it might adapt depending on the event data. Note that we don't show the dialog in the event handler itself, because the event handler is only run when receiving the event from the server...
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "03-03-06-GameSceneSetupChooseRankSuitDialog.swift", previousFile: "03-02-02-ActivePlayerSpotlightsUpdate.swift")
+            }
+            
+            @Step {
+                ...whereas we need to show and hide the dialog on a multitude of occasions, including when a local player switch happens, the player starts or finishes navigating the timeline (from the in-game menu or by pressing K on the keyboard) or an action is sent to the server (in response to clicking a dialog button). We can do so from within `enableActions(_:for:)`, where we already enable or disable all other actions. To conditionally show the dialog, we use the `showChild(_:_:)` method of the `overlay` property (which has a default implementation that returns `nil`).
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "03-03-07-GameSceneShowChooseRankSuitDialog.swift")
+            }
+            
+            @Step {
+                Finally, after the player has made their choice and the `ChooseRankSuitEvent` is received, we make it visible for all players with a transient text. In this case we use `TimelineAnimation`, which allows to control exactly what happens when the animation starts or ends, and what happens in between.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "03-03-08-GameSceneChooseRankSuitEvent.swift")
+            }
+            
+            @Step {
+                Here's how the dialog looks like.
+                
+                @Image(source: "03-03-09-ChooseRankSuitDialog", alt: "The choose rank or suit dialog.")
+            }
+        }
+    }
+    
+    @Section(title: "Card Artwork") {
+        @ContentAndMedia {
+            For this tutorial, we use placeholders for the card artwork. In this section we'll show how to use actual artwork (if you have any).
+        }
+        
+        @Steps {
+            @Step {
+                The game scene is responsible for loading all the necessary artwork. We'll assume that you have a folder `Art.scnassets` in your Xcode project that contains all the cards as `.heic` images. In this case, we need the artwork to be loaded as SceneKit materials, but for other use cases we could load it as SpriteKit textures instead.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "03-04-01-GameScenePreparedResources.swift", previousFile: "03-03-08-GameSceneChooseRankSuitEvent.swift")
+            }
+            
+            @Step {
+                Finally we replace the card placeholders with the loaded materials. We'll assume that each card is named `"[suit] [rank]"` (just like its id) and that it has the `.heic` extension. Each card has the same back image, represented by the image `"back.heic"`.
+                
+                @Code(name: "CrazyEightsTableNode.swift", file: "03-04-02-TableNodePreparedResources.swift", previousFile: "02-02-02-TableNodePlayCard.swift")
+            }
+        }
+    }
+    
+    @Section(title: "Rules") {
+        @ContentAndMedia {
+            The rules can be opened both from the main menu as well as by hitting the question mark icon in the in-game menu.
+            
+            @Image(source: "03-05-04-Rules", alt: "The game rules during the game.")
+        }
+        
+        @Steps {
+            @Step {
+                Let's define a `CrazyEightsRulesView` class that inherits from `SKNode`.
+                
+                @Code(name: "CrazyEightsRulesView.swift", file: "03-05-01-RulesViewEmpty.swift")
+            }
+            
+            @Step {
+                Each child of the view will appear as a separate page when showing the rules.
+                
+                @Code(name: "CrazyEightsRulesView.swift", file: "03-05-02-RulesViewPages.swift")
+            }
+            
+            @Step {
+                Finally we need to update the configuration file.
+                
+                @Code(name: "CrazyEightsConfiguration.swift", file: "03-05-03-ConfigurationRules.swift", previousFile: "03-01-02-PlayerIcons.swift")
+            }
+            
+            @Step {
+                Here's how the rules looks like when opened from the in-game menu.
+                
+                @Image(source: "03-05-04-Rules", alt: "The game rules during the game.")
+            }
+        }
+    }
+    
+    @Section(title: "Bots") {
+        @ContentAndMedia {
+            One or more bot strategies allow you to play solo and quickly test the game as well.
+        }
+        
+        @Steps {
+            @Step {
+                Create a file `CrazyEightsGameBot.swift`. Add an extension to `CrazyEightsGame` that implements the `GameBot` protocol. 
+                
+                @Code(name: "CrazyEightsGameBot.swift", file: "03-06-01-GameBotEmpty.swift")
+            }
+            
+            @Step {
+                `GameBot` has a single requirement, but this in turn requires a new type for the strategy. For now, we define a single "dummy" strategy.
+                
+                @Code(name: "CrazyEightsGameBot.swift", file: "03-06-02-GameBotStrategy.swift")
+            }
+            
+            @Step {
+                Before proceeding with the implementation of the dummy strategy, we need to make the action handler available to the game extension by changing it from `private` to `private(set)`.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "03-06-03-OpenActionHandler.swift", previousFile: "03-03-04-PlayCardUpdate.swift")
+            }
+            
+            @Step {
+                Our dummy strategy creates a list of all valid actions and returns a random one. This allows us to easily test the game without investing too much time in sofisticated strategies.
+                
+                @Code(name: "CrazyEightsGameBot.swift", file: "03-06-04-GameBotDummy.swift", previousFile: "03-06-02-GameBotStrategy.swift")
+            }
+            
+            @Step {
+                If we have more than one bot strategy, BoardGameKit shows a strategy selector beside the buttons to add and remove bots. By default, a strategy's `rawValue` is shown in the selector, but if we want to show a custom label, we need to make `CrazyEightsStrategy` implement `LocalizedLabel`. With only one strategy, though, the custom label won't be shown.
+                
+                @Code(name: "CrazyEightsGameBot.swift", file: "03-06-05-GameBotStrategyLocalized.swift", previousFile: "03-05-03-ConfigurationRules.swift")
+            }
+        }
+    }
+    
+    @Section(title: "Theme") {
+        @ContentAndMedia {
+            The configuration allows to set a theme that defines the appearance and behaviour of the game menus.
+        }
+        
+        @Steps {
+            @Step {
+                We could customize the look of the game menus by passing a `Theme` to the constructor of `ClientConfiguration`. A theme allows to customize fonts and buttons and set a background image, although in this example we just use the empty constructor.
+                
+                @Code(name: "CrazyEightsConfiguration.swift", file: "03-07-01-ConfigurationTheme.swift", previousFile: "03-06-05-GameBotStrategyLocalized.swift")
+            }
+            
+            @Step {
+                Since we don't have pretty textures to use just yet, in the next step we set another option instead to make navigating the game menus more interesting.
+            }
+        }
+    }
+    
+    @Section(title: "Sample Games") {
+        @ContentAndMedia {
+            The configuration allows to define a set of sample games, one of which is chosen randomly and played back in the background while the user navigates the menus.
+            
+            @Image(source: "03-08-06-SampleGame", alt: "The sample game playing back in the background.")
+        }
+        
+        @Steps {
+            @Step {
+                Here's how we can quickly create a sample game. Start a new game, but this time add at least **two** bots, click Next, then click Become Observer (Debug). This button, which is only visible in debug builds, will remove yourself from the players and make you an observer, and since there are only bots now, the game starts automatically. The Xcode console will output many logs `"Determining action X for bot Y..."` very fast, and the game will hopefully come to an end within a few seconds.
+            }
+            
+            @Step {
+                Even when all the bot actions have been calculated, the game scene will still play for several minutes before the final scoreboard appears: to increase the playback speed, you can do so from the in-game menu or by pressing the L key on your keyboard repeatedly. Letting bots compete against each other is also a quick and dirty way of testing whether the game logic or game scene contain any errors.
+            }
+            
+            @Step {
+                You don't have to watch the whole game play back; you can go back to the main menu by clicking the three dots button, then the house icon. Click the Archive button and notice that there's a new entry: select it, then click the Share button at the top and save the game file in your Downloads or Desktop folder.
+            }
+            
+            @Step {
+                In the Xcode project, create a folder `Sample games` and move the save file to that folder.
+            }
+            
+            @Step {
+                Finally we need to update the configuration file to let BoardGameKit know where the sample games are stored.
+                
+                @Code(name: "CrazyEightsConfiguration.swift", file: "03-08-05-ConfigurationSampleGames.swift", previousFile: "03-06-05-GameBotStrategyLocalized.swift")
+            }
+            
+            @Step {
+                Run the game. If everything goes well, you should see the newly created sample game playing back in the background.
+                
+                @Image(source: "03-08-06-SampleGame", alt: "The sample game playing back in the background.")
+            }
+        }
+    }
+}

@@ -1,0 +1,269 @@
+@Tutorial(time: 75) {
+    @Intro(title: "Game Logic and Visualization") {
+        In this chapter we're going to implement the game logic, interpret it in the game scene and allow the player to interact with the game scene elements.
+        
+        @Image(source: "02-02-04-GameOpeningCardsVisible.png", alt: "The home menu of the game.")
+    }
+    
+    @Section(title: "Start game") {
+        @ContentAndMedia {
+            Now that the app compiles, we start by programming the game logic.
+        }
+        
+        @Steps {
+            @Step {
+                Whenever an action comes in, `handle(context:)` is called. By using a `GameActionHandler` instance, we delegate to BoardGameKit the task of decoding the request data, checking whether the game and the players are in an allowed state and then routing the action to a custom handler. Note how we initialize it with the value `CrazyEightsState.start` (defined at the bottom), which means that only ambient actions associated with this state are allowed at the beginning. `CrazyEightsPlayerState`, on the other hand, represents the player state (we'll define it later). Then we register an action `startGame` (which we'll define in the next step) with the `.start` state. We also need to implement the `close` method (which has a default empty implementation) in which we release the action handler in order to break the retain cycles between the game and the registered callbacks.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-01-01-GameAddHandle.swift", previousFile: "01-03-05-GameHandleAction.swift")
+            }
+            
+            @Step {
+                Now we declare the ambient action handler `startGame` that accepts two arguments: one of type `StartGameAction` (which we defined earlier) and one of type `GameActionContext` (which will be the same object passed to `handle(context:)`). Remember to reset the state of the game or of a player as soon as the allowed actions change. The game won't complain if we forget to do so and everyone plays by the rules, but an unexpected action may break the game. In our case, once the game has started, we don't expect any more ambient actions, so we reset the game state (we set the game to "waiting").
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-01-02-GameSetState.swift")
+            }
+            
+            @Step {
+                Let's continue by creating the main game element: the card object. It's recommended to define an `id` property that is unique and user-readable, ideally containing the unique characteristics of the object: since we'll store it in the save file and send it between server and clients, it will greatly simplify the debugging process.
+                
+                @Code(name: "GameElements.swift", file: "02-01-03-Card.swift")
+            }
+            
+            @Step {
+                Add a property to the player that holds an array of cards. We could use an `Array`, but BoardGameKit's `RecordedArray` has built-in undo support; this means that changes to the array are automatically recorded by the undo manager, and when the player clicks the undo or redo button, they are reverted or restored. Then define `CrazyEightsPlayerState`, which we already referenced in the action handler's constructor and we'll use to define when a player is allowed to play.
+                
+                @Code(name: "CrazyEightsPlayer.swift", file: "02-01-04-PlayerCards.swift", previousFile: "01-04-02-PlayerId.swift")
+            }
+            
+            @Step {
+                Add a property to the game that holds the card deck. Then update `startGame(data:context:)` to deal a number of cards to each player. Notice how `draw(count:ids:)` accepts an argument `ids`. By providing a nil value, the deck will return random cards each time.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-01-05-DealCards.swift", previousFile: "02-01-02-GameSetState.swift")
+            }
+            
+            @Step {
+                During a live game, we want to draw random cards, but when loading a save file, we want the result to be the one we recorded during the live game. To get access to the replay data, we need to change the type of `StartGameAction` to `ReplayableGameAction`, add the required `ReplayData` type and change the signature of `startGame` by adding an additional argument of type `inout StartGameAction.ReplayData?`. Finally we also need to feed the replay data back to BoardGameKit before the request ends, so that it can be written to the save file.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-01-06-SaveDealtCards.swift")
+            }
+            
+            @Step {
+                As the last part of the `startGame` method, we need to send the new data to the players and set the state of the first player. During the live game, the order of the players passed to the game's initializer is random, and since we want the first player to be chosen randomly, we can simply take the first player in the array. For now, we send each player's cards to everyone, but in a moment we'll update the code to send the data only to the relevant players.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-01-07-StartGameEvent.swift")
+            }
+            
+            @Step {
+                Now back to the client side. Add a property to the player node that holds a card fan.
+                
+                @Code(name: "CrazyEightsPlayerNode.swift", file: "02-01-08-PlayerNodeCards.swift", previousFile: "01-06-02-PlayerNodeId.swift")
+            }
+            
+            @Step {
+                We could add the card deck to the `GameScene` itself, but this would clutter it up a bit. A separate table node is often useful to store all the remaining elements that don't belong to the players. Create the `CrazyEightsTableNode.swift` file. Import `BoardGameKit` and `SceneKit` and create a new `CrazyEightsTableNode` class that inherits from `SCNNode`.
+                
+                @Code(name: "CrazyEightsTableNode.swift", file: "02-01-09-TableNodeEmpty.swift")
+            }
+            
+            @Step {
+                Add a property to the table node that holds a card deck. Since we don't have any nice textures yet, we use dynamically created textures that show a card's id (which is formed from its rank and suit): this will allow us to test the game before investing time in creating the textures. Note that we set the deck's `position.y` to a value slightly greater than 0: this is because our virtual cards have no thickness, so a card lying on the table would intersect the table, often causing rendering artifacts.
+                
+                @Code(name: "CrazyEightsTableNode.swift", file: "02-01-10-TableNodeCardDeck.swift")
+            }
+            
+            @Step {
+                In the game scene, we'll use a `GameSceneEventHandler` that functions similarly to the action handler in the game class and handles the incoming events.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-01-11-GameSceneAddHandles.swift", previousFile: "01-05-07-GameSceneHidePrivateData.swift")
+            }
+            
+            @Step {
+                Finally, handle the `StartGameEvent` by dealing cards to each player. Nodes from a deck are picked from last to first, since the first node is the one lying on the table. `appendNewNodes()` and `animateNodes()` also have built-in undo support.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-01-12-GameSceneStartGame.swift")
+            }
+        }
+    }
+    
+    @Section(title: "Play card") {
+        @ContentAndMedia {
+            It's time to implement the first player action: to play a card.
+        }
+        
+        @Steps {
+            @Step {
+                Let's add the game logic first. In the `playCard` action handler, we first check if the chosen card is valid, otherwise throw an error (for simplicity, we'll allow the first player to play any card). Then we move the card to the discard pile. Finally we determine the next player. We'll skip handling a card with rank 8 for now.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-02-01-PlayCard.swift", previousFile: "02-01-07-StartGameEvent.swift")
+            }
+            
+            @Step {
+                Add a card discard pile to the table node.
+                
+                @Code(name: "CrazyEightsTableNode.swift", file: "02-02-02-TableNodePlayCard.swift", previousFile: "02-01-10-TableNodeCardDeck.swift")
+            }
+            
+            @Step {
+                And finally let's handle the newly added logic in the game scene.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-02-03-GameScenePlayCard.swift", previousFile: "02-01-12-GameSceneStartGame.swift")
+            }
+            
+            @Step {
+                Let's see what the game looks like. Repeat the same steps as earlier: click on Play > Local Game > New Game, add another local player, click Next and Start. You'll notice that there's a "Show [player]" button in the middle of the screen: since there is more than one local player, this button is shown when a player switch is needed to continue the game. Now, whenever the "Show [player]" button is visible, all private date should be hidden until the next player hits that button, but right now the player cards are still visible for everyone.
+                
+                @Image(source: "02-02-04-GameOpeningCardsVisible", alt: "The game opening with all cards visible.")
+            }
+        }
+    }
+    
+    @Section(title: "Hide cards") {
+        @ContentAndMedia {
+            The game still informs each player about each player's cards. It's time to add some privacy.
+        }
+        
+        @Steps {
+            @Step {
+                We start by changing the type of `StartGameEvent` to `PrivateGameEvent`, adding the required `PrivateData` type and calling `sendToAllPlayers(_:privateData:)`. The second argument of this method allows to declare which player should be sent which private data. Note than you can always check what data is effectively sent from the Xcode console.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-03-01-StartGamePrivateEvent.swift", previousFile: "02-02-01-PlayCard.swift")
+            }
+            
+            @Step {
+                Now we update the game scene. We use `lastChildNodes(withNames:)` when a player got private data, and `lastChildNodes(hiddenCount:)` when they are dealt a number of cards hidden from the local players. While we're at it, let's add a small time offset to each player's animation so it looks more like the cards are dealt to the players sequentially rather than to all players at the same time.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-03-02-GameScenePrivateEvent.swift", previousFile: "02-02-03-GameScenePlayCard.swift")
+            }
+            
+            @Step {
+                Let's add the code to show or hide the cards when requested. BoardGameKit calls `hidePrivateData(_:for:)` before the game starts, then calls it again whenever the local player is set or unset (either once at the beginning if there's only one local player, or whenever the "Show/Hide [player]" button is hit). Note that we use BoardGameKit's `hideChildren` property instead of SceneKit's `isHidden`. The former replaces each card's front texture with a blank one, still allowing the player to see the back of the cards, while the latter would hide the nodes altogether.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-03-03-GameSceneHidePrivateData.swift")
+            }
+            
+            @Step {
+                Now the cards are hidden when starting the game and they only become visible when clicking "Show [player]".
+                
+                @Image(source: "02-03-04-GameOpeningCardsHidden", alt: "The game opening with all cards hidden.")
+            }
+        }
+    }
+    
+    @Section(title: "Enable and validate cards") {
+        @ContentAndMedia {
+            Now we allow the player to select a card to play and provide feedback if the selected card is invalid.
+        }
+        
+        @Steps {
+            @Step {
+                BoardGameKit calls `enableActions(_:for:)` whenever the current player state changes. It also disables all actions while it's waiting for a server response. This method allows to enable the game elements that are relevant in the current state and set a handler that is called when the player interacts with them. Note that since we assigned the handler to `handCards` (the card fan), we have to determine the effectively selected card by using its `descendants[0]` property.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-04-01-GameSceneEnableActions.swift", previousFile: "02-03-03-GameSceneHidePrivateData.swift")
+            }
+            
+            @Step {
+                When the first player selects a card, it is animated to the discard pile on the table. It's the next player's turn and the "Hide [player]" button appears. Hit it. The visible cards are hidden and the button changes to "Show [player]". Hit it to switch to the other player and show their cards.
+                
+                @Image(source: "02-04-02-SecondPlayerCardsVisible", alt: "The second player with their cards visible.")
+            }
+            
+            @Step {
+                If you can, play a card, otherwise the only thing you can do for now is select an invalid card... which will cause a "Validation failed." alert to appear. Let's implement a more user-friendly feedback: instead of throwing a generic error, we change the type of `PlayCardEvent` to `FailableGameEvent` and add the required `Failure` type. The request handler should then throw the newly defined `Failure` type, which we'll handle in the game scene.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-04-02-PlayCardFailure.swift", previousFile: "02-03-01-StartGamePrivateEvent.swift")
+            }
+            
+            @Step {
+                In the game scene, we have to slightly adapt the `playCard` method signature and its body to handle both success and failure cases. We signal an invalid card by calling `runInvalidUseAnimation()` on it. Now launch the game again: when selecting an invalid card, it flashes red.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-04-03-GameScenePlayCardFailure.swift", previousFile: "02-04-01-GameSceneEnableActions.swift")
+            }
+        }
+    }
+    
+    @Section(title: "Draw card") {
+        @ContentAndMedia {
+            Now we implement the next player action: to draw a card.
+        }
+        
+        @Steps {
+            @Step {
+                Add a new type `DrawCardAction`. Since the drawn card is random, the action needs to be replayable. Then add a new type `DrawCardEvent`. Since the drawn card is only communicated to the current player, it needs to be a private event.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-05-01-DrawCard.swift", previousFile: "02-04-02-PlayCardFailure.swift")
+            }
+            
+            @Step {
+                Add the action handler and register it. Notice how this time we used a different initializer for the second argument of the `sendToAllPlayers(_:privateData:)` method: only the player who initiated the action gets some private data. When the card deck is emptied, all cards in the discard pile except the top one are moved back to the deck.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-05-02-DrawCardHandler.swift")
+            }
+            
+            @Step {
+                In the game scene, we allow the player to click the card deck to trigger the draw card action.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-05-03-GameSceneSelectCardDeck.swift", previousFile: "02-04-03-GameScenePlayCardFailure.swift")
+            }
+            
+            @Step {
+                We add the event handler and register it. Similarly to the `startGame` method, we pick the last card of the deck and deal it to the player. For the shuffle animation, we use a custom `MoveAnimation` to make the last played card float up, allowing the remaining cards to be shuffled back into the deck, and then float down again. We could have used `playedCards.animateNodes()` instead (which automatically creates instances of `MoveAnimation`), but it would have animated the card straight through all the other cards.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-05-04-GameSceneDrawCard.swift")
+            }
+        }
+    }
+        
+    @Section(title: "End round, start round, end game") {
+        @ContentAndMedia {
+            A round ends when a player's hand is emptied. The game ends when a player has reached a number of points equal to the number of players multiplied by 50.
+        }
+        
+        @Steps {
+            @Step {
+                First we need a property to keep track of the player points. We use the `@Recorded` annotation to add undo support to this simple primitive type.
+                
+                @Code(name: "CrazyEightsPlayer.swift", file: "02-06-01-PlayerPoints.swift", previousFile: "02-01-04-PlayerCards.swift")
+            }
+            
+            @Step {
+                When a round ends, we calculate the points for each player.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-06-02-EndRound.swift", previousFile: "02-05-02-DrawCardHandler.swift")
+            }
+            
+            @Step {
+                Afterwards we start a new round by calling `context.queue(action:)`. We can reuse the `StartGame` action and rename it to `StartRound`, since both do exactly the same thing.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-06-03-StartRound.swift")
+            }
+            
+            @Step {
+                To avoid looping forever, we implement the end game condition. The end game event also contains each player's points.
+                
+                @Code(name: "CrazyEightsGame.swift", file: "02-06-04-EndGame.swift")
+            }
+            
+            @Step {
+                We implement the end round in the game scene (we're going to visualize the player points later). Notice that we added a call to `addTimeOffset(_:)` at the end of `playCard`: that's because `playCard` and `endRound` are part of the same event group and hence all calls to `animateNodes()` have the same time offset by default, meaning that when a round ends, the played card will have barely left the player's hand and already be moved to the card deck. The time offset of 1 second will make sure that the card is fully animated to the discard pile before all cards are moved to the deck (the default duration of animations created by a call to `animateNodes()` is 1 second).
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-06-05-GameSceneEndRound.swift", previousFile: "02-05-04-GameSceneDrawCard.swift")
+            }
+            
+            @Step {
+                We implement the end game in the game scene. `showEndGameRanking` shows a standard scoreboard and buttons to go back to the home screen or play again. Again, since the round end and game end are part of the same event group, we added a time offset after a round end so that the scoreboard doesn't appear while the end round animation is still in progress.
+                
+                @Code(name: "CrazyEightsGameScene.swift", file: "02-06-06-GameSceneEndGame.swift")
+            }
+            
+            @Step {
+                If you start the game and try to load the previously saved game, you'll get an error about an invalid action `startGame`. That's because the game logic now expects an action `startRound`, but the save file still contains the old action name. Copy the path of the save file given in the error dialog, then reveal it in the Finder via the Go > Go To Folder menu command. You can either delete the save file and start a new game, or fix the save file manually: open it and look for the reference to `startGame` around line 7. Change it to `startRound`, save the file and close it. After relaunching the game, you should be able to load the save file without errors.
+            }
+            
+            @Step {
+                A quick bonus tip as a reward for reaching the end of this chapter (if you haven't found out already): at any time during the game you can navigate the timeline by opening the in-game menu and pressing the pause button. There's also an undo and redo button, and an info view that shows the cumulative time and total number of moves for each player. Feel free to experiment with them to see if they behave correctly.
+                
+                @Image(source: "02-06-07-Timeline", alt: "The game timeline.")
+            }
+        }
+    }
+}

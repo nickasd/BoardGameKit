@@ -1,0 +1,25 @@
+@Tutorials(name: "BoardGameKit") {
+    @Intro(title: "Crazy Eights: Your first game") {
+        Crazy Eights is a simple game that allows to demonstrate how BoardGameKit works. In this game, players alternatively play a card that either has the same suit or rank as the card played by the previous player, or draw a card if they cannot play. Playing an 8 allows to declare the rank or suit that the next player has to play. The player who manages to get rid of all their cards first, wins.
+        
+        @Image(source: "03-08-06-SampleGame.png", alt: "The game's home menu.")
+    }
+    
+    @Chapter(name: "Basic Structure") {
+        @Image(source: "01-07-01-Home.png", alt: "The game's home menu.")
+        
+        @TutorialReference(tutorial: "doc:01-BasicStructure")
+    }
+    
+    @Chapter(name: "Game Logic and Visualization") {
+        @Image(source: "02-02-04-GameOpeningCardsVisible.png", alt: "The game's opening.")
+        
+        @TutorialReference(tutorial: "doc:02-GameLogic")
+    }
+    
+    @Chapter(name: "Additions") {
+        @Image(source: "03-08-06-SampleGame.png", alt: "The game's updated home menu.")
+        
+        @TutorialReference(tutorial: "doc:03-Additions")
+    }
+}
